@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import FastAPI, status
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException, status
 from src.models.esp_data import EspData
 from src.models.enriched_data import EnrichedData
 from src.helpers.enrich_helper import enrichEspData
@@ -13,11 +13,22 @@ db.create_db_and_tables()
 
 
 @app.get('/data')
-def getDbData() -> List[EnrichedData]:
+def getDbData(size: Optional[int] = 10) -> List[EnrichedData]:
     log.info('Getting all data')
-    result = db.getAllData()
+    result = db.getAllData(size)
     log.debug(f'Got {len(result)} records')
     log.info('Successfully retrieved all data')
+    return result
+
+
+@app.get('/data/{timestamp}')
+def getDbDataByTimestamp(timestamp: int) -> EnrichedData:
+    log.info('Getting data by timestamp')
+    result = db.getDataByTimestamp(timestamp)
+    if result is None:
+        log.info('Data not found')
+        raise HTTPException(status_code=404, detail='Data not found')
+    log.debug('Successfully retrieved data')
     return result
 
 

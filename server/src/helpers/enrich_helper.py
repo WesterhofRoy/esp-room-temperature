@@ -21,9 +21,8 @@ def fetch_weather_data(timestamp: int):
             f'Error fetching weather data: {response.status_code}\n{response.text}')
 
 
-def getDateTime(date: dt.date, time: str) -> str:
-    time = dt.datetime.strptime(time, '%H:%M:%S').time()
-    return f'{date} {time}'
+def getDateTime(epoch: int) -> str:
+    return dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def getEpochTime(dateTime: str) -> int:
@@ -42,7 +41,7 @@ def getRoomActivity(dateTime: str) -> str:
     elif time < dt.time(19, 0):
         return 'unoccupied'
     # Between 1900 and 0000, roomActivity is hobbies
-    elif time < dt.time(0, 0):
+    elif time < dt.time(22, 30):
         return 'hobbies'
     # Exhastive activity
     else:
@@ -58,8 +57,9 @@ def getWeatherData(timestamp: str) -> WeatherData:
 
 
 def enrichEspData(data: EspData) -> EnrichedData:
-    datetime = getDateTime(data.date, data.time)
-    timestamp = getEpochTime(datetime)
+    timestamp = data.time
+    # Convert date.time (epoch) to datetime
+    datetime = getDateTime(timestamp)
     roomActivity = getRoomActivity(datetime)
     weather = getWeatherData(timestamp)
     return EnrichedData(

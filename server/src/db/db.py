@@ -11,9 +11,10 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 
-def getAllData() -> List[EnrichedData]:
+def getAllData(size: int) -> List[EnrichedData]:
     with Session(engine) as session:
-        enrichedData = session.exec(select(EnrichedDataModel)).all()
+        # Get last size elements from the database, sorted by timestamp, latest first
+        enrichedData = session.exec(select(EnrichedDataModel).order_by(EnrichedDataModel.timestamp.desc()).limit(size)).all()
         return [
             EnrichedData(
                 **data.model_dump(),
@@ -24,6 +25,19 @@ def getAllData() -> List[EnrichedData]:
             for data
             in enrichedData
         ]
+
+
+def getDataByTimestamp(timestamp: int) -> EnrichedData:
+    with Session(engine) as session:
+        data = session.get(EnrichedDataModel, timestamp)
+        if data is None:
+            return None
+        return EnrichedData(
+            **data.model_dump(),
+            weather=WeatherData(
+                **session.get(WeatherDataModel, data.timestamp).model_dump()
+            )
+        )
 
 
 def insertEnrichedData(enrichedData: EnrichedData) -> int:

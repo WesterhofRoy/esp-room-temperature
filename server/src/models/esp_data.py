@@ -2,8 +2,7 @@ from pydantic import BaseModel
 
 
 class EspData(BaseModel):
-    date: str
-    time: str
+    time: int
     temperature: float
 
     # Add example data
@@ -11,8 +10,7 @@ class EspData(BaseModel):
         'json_schema_extra': {
             'examples': [
                 {
-                    'date': '2024-10-31',
-                    'time': '10:00:00',
+                    'time': '1730407380',
                     'temperature': 20.0
                 }
             ]
