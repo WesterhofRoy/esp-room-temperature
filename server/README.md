@@ -1,6 +1,6 @@
 # Server
 
-This server is deployed to Google Cloud using App Engine. The application can be found [here](https://esp-room-temp.ew.r.appspot.com/docs).
+This server is deployed to Google Cloud using App Engine.
 
 ## Running the server
 
