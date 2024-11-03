@@ -4,16 +4,18 @@
 #include <Adafruit_BME280.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <HTTPClient.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <ArduinoJson.h>
 #include <vector>
 
-const char* ssid = "ssid";
-const char* password = "pass";
+const char* SSID = "SSID";
+const char* PASSWORD = "PASS";
+const char* HOST = "API_URL";
 
 WebServer server(80);
-WiFiClient client;
+HTTPClient http;
 // Define NTP Client to get dutch (winter) time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
@@ -23,7 +25,7 @@ Adafruit_BME280 bme; // I2C
 
 // Sensor data
 struct SensorData {
-    String time;
+    int time;
     float temperature;
 };
 // Array to store sensor data (data will be 4 times per hour for 24 hours)
@@ -40,7 +42,7 @@ void setup() {
     // Connect to WiFi
     Serial.println();
     Serial.print("Connecting to WiFi..");
-    WiFi.begin(ssid, password);
+    WiFi.begin(SSID, PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -109,11 +111,39 @@ void loop() {
 
     // Add sensor data to the array every 15 minutes
     if (time % 5 == 0 && lastDataAdd != time) {
-        Serial.println("Adding sensor data..");
+        Serial.println("Adding sensor data at: " + String(timeClient.getEpochTime()));
         SensorData sensorData;
         sensorData.time = timeClient.getEpochTime();
         sensorData.temperature = bme.readTemperature();
         sensorDataVec.push_back(sensorData);
+
+        // Every 30 minutes, the data will be send to a Rest API, which will store the data in a database
+        // The local vector will be cleared after the data is send
+        if (time % 30 == 0) {
+            // Send data to Rest API
+            http.begin(String(HOST) + "/data/bulk");
+            http.addHeader("Content-Type", "application/json");
+            http.setTimeout(15000);  // Large timeout, as the server might be in sleep mode (serverless)
+            JsonDocument doc;
+            JsonArray data = doc.to<JsonArray>();
+            for (const SensorData sensorData : sensorDataVec) {
+                JsonObject obj = data.add<JsonObject>();
+                obj["time"] = sensorData.time;
+                obj["temperature"] = sensorData.temperature;
+            }
+            String output;
+            serializeJson(doc, output);
+            int httpCode = http.POST(output);
+            if (httpCode > 0) {
+                String response = http.getString();
+                Serial.println("Response: " + response);
+                // Clear the vector
+                sensorDataVec.clear();
+            } else {
+                Serial.println("Error: " + http.errorToString(httpCode));
+            }
+        }
+
         // Update the last data add time
         lastDataAdd = time;
     }
